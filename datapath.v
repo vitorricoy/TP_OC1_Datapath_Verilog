@@ -150,6 +150,7 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
       default: begin
         case (funct3)
           0: alucontrol <= (funct7 == 0) ? /*ADD*/ 4'd2 : /*SUB*/ 4'd6; 
+          1: alucontrol <= 4'd4; //SLL
           2: alucontrol <= 4'd7; // SLT
           6: alucontrol <= 4'd1; // OR
           //39: alucontrol <= 4'd12; // NOR
@@ -170,6 +171,7 @@ module ALU (input [3:0] alucontrol, input [31:0] A, B, output reg [31:0] aluout,
         0: aluout <= A & B; // AND
         1: aluout <= A | B; // OR
         2: aluout <= A + B; // ADD
+        4: aluout <= A << B; // SLL
         6: aluout <= A - B; // SUB
         //7: aluout <= A < B ? 32'd1:32'd0; //SLT
         //12: aluout <= ~(A | B); // NOR
