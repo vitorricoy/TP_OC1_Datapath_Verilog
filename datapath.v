@@ -14,7 +14,7 @@ module fetch (input zero, rst, clk, branch, input [31:0] sigext, output [31:0] i
   initial begin
     // Exemplos
     inst_mem[0] <= 32'h00000000; // nop
-    inst_mem[1] <= 32'b00000000010000010011000100010011; // slli x2, x2, 4
+    inst_mem[1] <= 32'b00000000010000011011000110010011; // slli x3, x3, 4
     inst_mem[2] <= 32'h00500113; // addi x2, x0, 5  ok
     inst_mem[3] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
@@ -79,9 +79,10 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
         aluop    <= 1;
         ImmGen   <= {{19{inst[31]}},inst[31],inst[7],inst[30:25],inst[11:8],1'b0};
 			end
-			7'b0010011: begin // addi == 19
+			7'b0010011: begin // addi, slli == 19
         alusrc   <= 1;
         regwrite <= 1;
+        aluop    <= 2;
         ImmGen   <= {{20{inst[31]}},inst[31:20]};
       end
 			7'b0000011: begin // lw == 3
@@ -132,11 +133,11 @@ module execute (input [31:0] in1, in2, ImmGen, input alusrc, input [1:0] aluop, 
   //Unidade Lógico Aritimética
   ALU alu (aluctrl, in1, alu_B, aluout, zero);
 
-  alucontrol alucontrol (aluop, funct, aluctrl);
+  alucontrol alucontrol (aluop, funct, aluctrl, alusrc);
 
 endmodule
 
-module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucontrol);
+module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucontrol, input alusrc);
   
   wire [7:0] funct7;
   wire [2:0] funct3;
@@ -150,7 +151,7 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
       1: alucontrol <= 4'd6; // SUB to branch
       default: begin
         case (funct3)
-          0: alucontrol <= (funct7 == 0) ? /*ADD*/ 4'd2 : /*SUB*/ 4'd6; 
+          0: alucontrol <= (funct7 == 0 || alusrc == 1) ? /*ADD*/ 4'd2 : /*SUB*/ 4'd6; 
           1: alucontrol <= 4'd4; //SLL
           2: alucontrol <= 4'd7; // SLT
           6: alucontrol <= 4'd1; // OR
