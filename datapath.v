@@ -14,7 +14,7 @@ module fetch (input zero, rst, clk, branch, input [31:0] sigext, output [31:0] i
   initial begin
     // Exemplos
     inst_mem[0] <= 32'h00000000; // nop
-    inst_mem[1] <= 32'b00000000010000010011000100010011 // slli x2, x2, 4
+    inst_mem[1] <= 32'b00000000010000010011000100010011; // slli x2, x2, 4
     inst_mem[2] <= 32'h00500113; // addi x2, x0, 5  ok
     inst_mem[3] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
