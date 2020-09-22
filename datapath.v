@@ -113,8 +113,8 @@ module Register_Bank (input clk, regwrite, input [4:0] read_reg1, read_reg2, wri
       memory[i] <= i;
   end
 
-  assign read_data1 = (regwrite && read_reg1==writereg) ? writedata : memory[read_reg1];
-  assign read_data2 = (regwrite && read_reg2==writereg) ? writedata : memory[read_reg2];
+  assign read_data1 = memory[read_reg1];
+  assign read_data2 = memory[read_reg2];
 	
   always @(posedge clk) begin
     if (regwrite)
