@@ -1,9 +1,9 @@
-module fetch (input zero, rst, clk, branch, input [31:0] sigext, output [31:0] inst);
+module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [31:0] inst);
   
   wire [31:0] pc, pc_4, new_pc;
 
   assign pc_4 = 4 + pc; // pc+4  Adder
-  assign new_pc = (branch & zero) ? pc_4 + sigext : pc_4; // new PC Mux
+  assign new_pc = (branch & takebranch) ? pc_4 + sigext : pc_4; // new PC Mux
 
   PC program_counter(new_pc, clk, rst, pc);
 
@@ -16,8 +16,10 @@ module fetch (input zero, rst, clk, branch, input [31:0] sigext, output [31:0] i
     inst_mem[0] <= 32'h00000000; // nop
     inst_mem[1] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[2] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
-    inst_mem[3] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[4] <= 32'h00210233; // add  x4, x2, x2  ok
+    inst_mem[3] <= 32'b00000000000100001000000001100011; // beq x1, x1, 0  
+    inst_mem[4] <= 32'b00000000000100000100000001100011; // blt x0, x1, 0 
+    inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
+    inst_mem[6] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
     //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
     //inst_mem[2] <= 32'h0000a003; // lw x1, x0(0) ok
@@ -129,27 +131,36 @@ module Register_Bank (input clk, regwrite, input [4:0] read_reg1, read_reg2, wri
   
 endmodule
 
-module execute (input [31:0] in1, in2, ImmGen, input alusrc, input [1:0] aluop, input [9:0] funct, output zero, output [31:0] aluout);
+module execute (input [31:0] in1, in2, ImmGen, input alusrc, input [1:0] aluop, input [9:0] funct, output takebranch, output [31:0] aluout);
 
   wire [31:0] alu_B;
   wire [3:0] aluctrl;
+  wire [2:0] brchop;
   
   assign alu_B = (alusrc) ? ImmGen : in2 ;
 
   //Unidade Lógico Aritimética
-  ALU alu (aluctrl, in1, alu_B, aluout, zero);
+  ALU alu (aluctrl, brchop, in1, alu_B, aluout, takebranch);
 
-  alucontrol alucontrol (aluop, funct, aluctrl, alusrc);
+  alucontrol alucontrol (aluop, funct, aluctrl, brchop, alusrc);
 
 endmodule
 
-module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucontrol, input alusrc);
+module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucontrol, output reg [2:0] branchop, input alusrc);
   
   wire [7:0] funct7;
   wire [2:0] funct3;
 
   assign funct3 = funct[2:0];
   assign funct7 = funct[9:3];
+
+  always @(funct) begin
+    case (funct3)
+      0: branchop <= 3'd0; // BEQ
+      4: branchop <= 3'd1; // BLT
+      default: branchop <= 3'd7; // Nop
+    endcase
+  end
 
   always @(aluop) begin
     case (aluop)
@@ -170,10 +181,16 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
   end
 endmodule
 
-module ALU (input [3:0] alucontrol, input [31:0] A, B, output reg [31:0] aluout, output zero);
+module ALU (input [3:0] alucontrol, input [2:0] branchop, input [31:0] A, B, output reg [31:0] aluout, output takebranch);
   
-  assign zero = (aluout == 0); // Zero recebe um valor lógico caso aluout seja igual a zero.
-  
+  always @(branchop, A, B) begin
+    case(branchop)
+      0: takebranch <= (A == B); // BEQ
+      1: takebranch <= (A < B); // BLT
+      default: takebranch <= 0; // Nop
+    endcase
+  end
+
   always @(alucontrol, A, B) begin
       case (alucontrol)
         0: aluout <= A & B; // AND
@@ -217,18 +234,18 @@ endmodule
 module mips (input clk, rst, output [31:0] writedata);
   
   wire [31:0] inst, sigext, data1, data2, aluout, readdata;
-  wire zero, memread, memwrite, memtoreg, branch, alusrc;
+  wire takebranch, memread, memwrite, memtoreg, branch, alusrc;
   wire [9:0] funct;
   wire [1:0] aluop;
   
   // FETCH STAGE
-  fetch fetch (zero, rst, clk, branch, sigext, inst);
+  fetch fetch (takebranch, rst, clk, branch, sigext, inst);
   
   // DECODE STAGE
   decode decode (inst, writedata, clk, data1, data2, sigext, alusrc, memread, memwrite, memtoreg, branch, aluop, funct);   
   
   // EXECUTE STAGE
-  execute execute (data1, data2, sigext, alusrc, aluop, funct, zero, aluout);
+  execute execute (data1, data2, sigext, alusrc, aluop, funct, takebranch, aluout);
 
   // MEMORY STAGE
   memory memory (aluout, data2, memread, memwrite, clk, readdata);
