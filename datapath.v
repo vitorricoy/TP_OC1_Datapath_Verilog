@@ -1,4 +1,4 @@
-module fetch (input takebranch, rst, clk, branch, input signed [31:0] sigext, output [31:0] inst);
+module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [31:0] inst);
   
   wire [31:0] pc, pc_4, new_pc;
 
@@ -47,7 +47,7 @@ module decode (input [31:0] inst, writedata, input clk, output [31:0] data1, dat
   wire [4:0] writereg, rs1, rs2, rd;
   wire [6:0] opcode;
   wire [9:0] funct;
-  wire signed [31:0] ImmGen;
+  wire [31:0] ImmGen;
 
   assign opcode = inst[6:0];
   assign rs1    = inst[19:15];
@@ -61,7 +61,7 @@ module decode (input [31:0] inst, writedata, input clk, output [31:0] data1, dat
 
 endmodule
 
-module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, memread, memwrite, branch, output reg [1:0] aluop, output reg signed [31:0] ImmGen);
+module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, memread, memwrite, branch, output reg [1:0] aluop, output reg [31:0] ImmGen);
 
   always @(opcode) begin
     alusrc   <= 0;
@@ -233,8 +233,7 @@ endmodule
 // TOP -------------------------------------------
 module mips (input clk, rst, output [31:0] writedata);
   
-  wire [31:0] inst, data1, data2, aluout, readdata;
-  wire signed [31:0] sigext;
+  wire [31:0] inst, sigext, data1, data2, aluout, readdata;
   wire takebranch, memread, memwrite, memtoreg, branch, alusrc;
   wire [9:0] funct;
   wire [1:0] aluop;
