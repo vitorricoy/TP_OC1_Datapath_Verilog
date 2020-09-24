@@ -1,4 +1,4 @@
-module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [31:0] inst);
+module fetch (input takebranch, rst, clk, branch, input signed [31:0] sigext, output [31:0] inst);
   
   wire [31:0] pc, pc_4, new_pc;
 
@@ -16,10 +16,10 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
     inst_mem[0] <= 32'h00000000; // nop
     inst_mem[1] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[2] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
-    inst_mem[3] <= 32'b00000000000100001000000001100011; // beq x1, x1, 0  
-    inst_mem[4] <= 32'b00000000000100000100000001100011; // blt x0, x1, 0 
-    inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[6] <= 32'h00210233; // add  x4, x2, x2  ok
+    //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
+    inst_mem[3] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
+    inst_mem[4] <= 32'h00500113; // addi x2, x0, 5  ok
+    inst_mem[5] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
     //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
     //inst_mem[2] <= 32'h0000a003; // lw x1, x0(0) ok
@@ -47,7 +47,7 @@ module decode (input [31:0] inst, writedata, input clk, output [31:0] data1, dat
   wire [4:0] writereg, rs1, rs2, rd;
   wire [6:0] opcode;
   wire [9:0] funct;
-  wire [31:0] ImmGen;
+  wire signed [31:0] ImmGen;
 
   assign opcode = inst[6:0];
   assign rs1    = inst[19:15];
@@ -61,7 +61,7 @@ module decode (input [31:0] inst, writedata, input clk, output [31:0] data1, dat
 
 endmodule
 
-module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, memread, memwrite, branch, output reg [1:0] aluop, output reg [31:0] ImmGen);
+module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, memread, memwrite, branch, output reg [1:0] aluop, output reg signed [31:0] ImmGen);
 
   always @(opcode) begin
     alusrc   <= 0;
@@ -77,7 +77,7 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
         regwrite <= 1;
         aluop    <= 2;
 			end
-		  7'b1100011: begin // beq == 99
+		  7'b1100011: begin // beq, blt == 99
         branch   <= 1;
         aluop    <= 1;
         ImmGen   <= {{19{inst[31]}},inst[31],inst[7],inst[30:25],inst[11:8],1'b0};
@@ -233,7 +233,8 @@ endmodule
 // TOP -------------------------------------------
 module mips (input clk, rst, output [31:0] writedata);
   
-  wire [31:0] inst, sigext, data1, data2, aluout, readdata;
+  wire [31:0] inst, data1, data2, aluout, readdata;
+  wire signed [31:0] sigext;
   wire takebranch, memread, memwrite, memtoreg, branch, alusrc;
   wire [9:0] funct;
   wire [1:0] aluop;
