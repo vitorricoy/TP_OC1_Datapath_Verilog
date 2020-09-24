@@ -15,8 +15,9 @@ module fetch (input zero, rst, clk, branch, input [31:0] sigext, output [31:0] i
     // Exemplos
     inst_mem[0] <= 32'h00000000; // nop
     inst_mem[1] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
-    inst_mem[2] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[3] <= 32'h00210233; // add  x4, x2, x2  ok
+    inst_mem[2] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
+    inst_mem[3] <= 32'h00500113; // addi x2, x0, 5  ok
+    inst_mem[4] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
     //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
     //inst_mem[2] <= 32'h0000a003; // lw x1, x0(0) ok
@@ -96,6 +97,11 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
         alusrc   <= 1;
         memwrite <= 1;
         ImmGen   <= {{20{inst[31]}},inst[31:25],inst[11:7]};
+      end
+            7'b0000111: begin //lwi == 7
+        memtoreg <= 1;
+        regwrite <= 1;
+        memread  <= 1;
       end
     endcase
   end
