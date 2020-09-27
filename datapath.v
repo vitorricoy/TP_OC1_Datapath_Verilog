@@ -14,12 +14,12 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
   initial begin
     // Exemplos
     inst_mem[0] <= 32'h00000000; // nop
-    inst_mem[1] <= 32'b00000000000100110110010000010011; // ori x8, x6, 0
+    inst_mem[1] <= 32'b00000000000100110110010000010011; // ori x8, x6, 1 ok
     inst_mem[2] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[3] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
     //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
     //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
-    inst_mem[4] <= 32'b11111110000100000101110011100011; // bge x1, x0, -8
+    inst_mem[4] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
     inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
     inst_mem[6] <= 32'b00000000110001001000000001010100; // swap x9, x12
     inst_mem[7] <= 32'h00210233; // add  x4, x2, x2  ok
