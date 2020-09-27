@@ -18,7 +18,8 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
     inst_mem[2] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[3] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
     //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
-    inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
+    //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
+    inst_mem[4] <= 32'b11111110000000000101110011100011; // bge x1, x0, -8
     inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
     inst_mem[6] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
@@ -159,6 +160,7 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
     case (funct3)
       0: branchop <= 3'd0; // BEQ
       4: branchop <= 3'd1; // BLT
+      5: branchop <= 3'd2; // BGE
       default: branchop <= 3'd7; // Nop
     endcase
   end
@@ -188,6 +190,7 @@ module ALU (input [3:0] alucontrol, input [2:0] branchop, input [31:0] A, B, out
     case(branchop)
       0: takebranch <= (A == B); // BEQ
       1: takebranch <= (A < B); // BLT
+      2: takebranch <= (A >= B); // BGE
       default: takebranch <= 0; // Nop
     endcase
   end
