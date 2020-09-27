@@ -19,7 +19,7 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
     inst_mem[3] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
     //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
     //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
-    inst_mem[4] <= 32'b11111110000000000101110011100011; // bge x1, x0, -8
+    inst_mem[4] <= 32'b11111110000000000101110011100011; // bge x1, x0, -8 ok
     inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
     inst_mem[6] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
