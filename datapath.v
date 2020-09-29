@@ -16,13 +16,14 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
     inst_mem[0] <= 32'h00000000; // nop
     inst_mem[1] <= 32'b00000000000100110110010000010011; // ori x8, x6, 1 ok
     inst_mem[2] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
-    inst_mem[3] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
+    inst_mem[3] <= 32'b00000000000000000100001100110111; // lui x6, 16384 ok
+    inst_mem[4] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
     //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
     //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
-    inst_mem[4] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
-    inst_mem[5] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[6] <= 32'b00000000110001001000000001010100; // swap x9, x12
-    inst_mem[7] <= 32'h00210233; // add  x4, x2, x2  ok
+    inst_mem[5] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
+    inst_mem[6] <= 32'h00500113; // addi x2, x0, 5  ok
+    inst_mem[7] <= 32'b00000000110001001000000001010100; // swap x9, x12
+    inst_mem[8] <= 32'h00210233; // add  x4, x2, x2  ok
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
     //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
     //inst_mem[2] <= 32'h0000a003; // lw x1, x0(0) ok
@@ -104,15 +105,21 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
         memwrite <= 1;
         ImmGen   <= {{20{inst[31]}},inst[31:25],inst[11:7]};
       end
-            7'b0000111: begin //lwi == 7
+      7'b0000111: begin //lwi == 7
         memtoreg <= 1;
         regwrite <= 1;
         memread  <= 1;
       end
-      		7'b1010100: begin //swap == 84
+      7'b1010100: begin //swap == 84
         regwrite <= 1;
         regwrite2 <= 1;
         aluop <= 3;
+      end
+      7'b0110111: begin
+        aluop <= 3;
+        alusrc <= 1;
+        regwrite <= 1;
+        ImmGen <= {inst[31:12], {12{inst[3]}}};        
       end
     endcase
   end
@@ -272,3 +279,4 @@ module mips (input clk, rst, output [31:0] writedata, writedata2);
   writeback writeback (aluout, readdata, data1, memtoreg, writedata, writedata2);
 
 endmodule
+
