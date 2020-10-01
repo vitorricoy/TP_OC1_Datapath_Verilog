@@ -1,9 +1,9 @@
-module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [31:0] inst);
+module fetch (input takebranch, rst, clk, branch, jump, input [31:0] sigext, output [31:0] inst);
   
   wire [31:0] pc, pc_4, new_pc;
 
   assign pc_4 = 4 + pc; // pc+4  Adder
-  assign new_pc = (branch & takebranch) ? pc_4 + sigext : pc_4; // new PC Mux
+  assign new_pc = (branch & takebranch) ? (jump ? sigext : pc_4 + sigext) : pc_4; // new PC Mux
 
   PC program_counter(new_pc, clk, rst, pc);
 
@@ -289,7 +289,7 @@ module mips (input clk, rst, output [31:0] writedata, writedata2);
   wire [1:0] aluop;
   
   // FETCH STAGE
-  fetch fetch (takebranch, rst, clk, branch, sigext, inst);
+  fetch fetch (takebranch, rst, clk, branch, jump, sigext, inst);
   
   // DECODE STAGE
   decode decode (inst, writedata, writedata2, clk, data1, data2, sigext, alusrc, memread, memwrite, memtoreg, branch, jump, regaddress, aluop, funct);   
