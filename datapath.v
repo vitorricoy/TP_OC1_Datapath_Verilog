@@ -18,13 +18,14 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
     inst_mem[2] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[3] <= 32'b00000000000000000100001100110111; // lui x6, 16384 ok
     inst_mem[4] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
+    inst_mem[5] <= 32'b00000000010000101000011000100111; // ss x12, x5, 4 ok
     //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
     //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
-    inst_mem[5] <= 32'b11111111100111111111000001101111; //jump -8 
-    inst_mem[6] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
-    inst_mem[7] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[8] <= 32'b00000000110001001000000001010100; // swap x9, x12
-    inst_mem[9] <= 32'h00210233; // add  x4, x2, x2  ok
+    inst_mem[6] <= 32'b11111111100111111111000001101111; //jump -8 ok
+    inst_mem[7] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
+    inst_mem[8] <= 32'h00500113; // addi x2, x0, 5  ok
+    inst_mem[9] <= 32'b00000000110001001000000001010100; // swap x9, x12
+    inst_mem[10] <= 32'h00210233; // add  x4, x2, x2  ok
   
     //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
     //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
@@ -46,9 +47,9 @@ module PC (input [31:0] pc_in, input clk, rst, output reg [31:0] pc_out);
 
 endmodule
 
-module decode (input [31:0] inst, writedata, writedata2, input clk, output [31:0] data1, data2, ImmGen, output alusrc, memread, memwrite, memtoreg, branch, jump, output [1:0] aluop, output [9:0] funct);
+module decode (input [31:0] inst, writedata, writedata2, input clk, output [31:0] data1, data2, ImmGen, output alusrc, memread, memwrite, memtoreg, branch, jump, regaddress, output [1:0] aluop, output [9:0] funct);
   
-  wire branch, jump, memread, memtoreg, MemWrite, alusrc, regwrite, regwrite2;
+  wire branch, jump, regaddress, memread, memtoreg, MemWrite, alusrc, regwrite, regwrite2;
   wire [1:0] aluop; 
   wire [4:0] writereg, rs1, rs2, rd;
   wire [6:0] opcode;
@@ -57,17 +58,17 @@ module decode (input [31:0] inst, writedata, writedata2, input clk, output [31:0
 
   assign opcode = inst[6:0];
   assign rs1    = inst[19:15];
-  assign rs2    = inst[24:20];
+  assign rs2    = (regaddress) ? inst[11:7] : inst[24:20];
   assign rd     = inst[11:7];
   assign funct = {inst[31:25],inst[14:12]};
 
-  ControlUnit control (opcode, inst, alusrc, memtoreg, regwrite, regwrite2, memread, memwrite, branch, jump, aluop, ImmGen);
+  ControlUnit control (opcode, inst, alusrc, memtoreg, regwrite, regwrite2, memread, memwrite, branch, jump, regaddress, aluop, ImmGen);
   
   Register_Bank Registers (clk, regwrite, regwrite2, rs1, rs2, rd, writedata, writedata2, data1, data2); 
 
 endmodule
 
-module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, regwrite2, memread, memwrite, branch, jump, output reg [1:0] aluop, output reg [31:0] ImmGen);
+module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, memtoreg, regwrite, regwrite2, memread, memwrite, branch, jump, regaddress, output reg [1:0] aluop, output reg [31:0] ImmGen);
 
   always @(opcode) begin
     alusrc   <= 0;
@@ -80,6 +81,7 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
     aluop    <= 0;
     ImmGen   <= 0; 
     jump <= 0;
+    regaddress <= 0;
     case(opcode) 
       7'b0110011: begin // R type == 51
         regwrite <= 1;
@@ -128,6 +130,13 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
         ImmGen <= {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
         branch <= 1;
         jump <= 1;
+      end
+      7'b0100111: begin //ss == 39
+        memwrite <= 1;
+        ImmGen <= {{20{inst[31]}},inst[31:20]};
+        alusrc <= 1;
+        aluop <= 2;
+        regaddress <= 1;
       end
     endcase
   end
@@ -243,7 +252,7 @@ module ALU (input [3:0] alucontrol, input [2:0] branchop, input [31:0] A, B, out
   end
 endmodule
 
-module memory (input [31:0] address, writedata, input memread, memwrite, clk, output [31:0] readdata);
+module memory (input [31:0] aluout, data2, input memread, memwrite, clk, regaddress, output [31:0] readdata);
 
   integer i;
   reg [31:0] memory [0:127]; 
@@ -254,11 +263,13 @@ module memory (input [31:0] address, writedata, input memread, memwrite, clk, ou
       memory[i] <= i;
   end
 
-  assign readdata = (memread) ? memory[address[31:2]] : 0;
+  assign readdata = (memread) ? memory[aluout[31:2]] : 0;
 
   always @(posedge clk) begin
-    if (memwrite)
-      memory[address[31:2]] <= writedata;
+    if (memwrite & !regaddress)
+      memory[aluout[31:2]] <= data2;
+    if (memwrite & regaddress)
+      memory[data2[31:2]] <= aluout;
 	end
 endmodule
 
@@ -273,7 +284,7 @@ endmodule
 module mips (input clk, rst, output [31:0] writedata, writedata2);
   
   wire [31:0] inst, sigext, data1, data2, aluout, readdata;
-  wire takebranch, memread, memwrite, memtoreg, branch, alusrc, jump;
+  wire takebranch, memread, memwrite, memtoreg, branch, alusrc, jump, regaddress;
   wire [9:0] funct;
   wire [1:0] aluop;
   
@@ -281,16 +292,15 @@ module mips (input clk, rst, output [31:0] writedata, writedata2);
   fetch fetch (takebranch, rst, clk, branch, sigext, inst);
   
   // DECODE STAGE
-  decode decode (inst, writedata, writedata2, clk, data1, data2, sigext, alusrc, memread, memwrite, memtoreg, branch, jump, aluop, funct);   
+  decode decode (inst, writedata, writedata2, clk, data1, data2, sigext, alusrc, memread, memwrite, memtoreg, branch, jump, regaddress, aluop, funct);   
   
   // EXECUTE STAGE
   execute execute (data1, data2, sigext, alusrc, aluop, funct, takebranch, aluout, jump);
 
   // MEMORY STAGE
-  memory memory (aluout, data2, memread, memwrite, clk, readdata);
+  memory memory (aluout, data2, memread, memwrite, clk, regaddress, readdata);
 
   // WRITEBACK STAGE
   writeback writeback (aluout, readdata, data1, memtoreg, writedata, writedata2);
 
 endmodule
-
