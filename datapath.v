@@ -12,27 +12,17 @@ module fetch (input takebranch, rst, clk, branch, input [31:0] sigext, output [3
   assign inst = inst_mem[pc[31:2]];
 
   initial begin
-    // Exemplos
+    // Instruções usadas para testar as instruções na implementação
     inst_mem[0] <= 32'h00000000; // nop
     inst_mem[1] <= 32'b00000000000100110110010000010011; // ori x8, x6, 1 ok
     inst_mem[2] <= 32'b00000000010000011001000110010011; // slli x3, x3, 4 ok
     inst_mem[3] <= 32'b00000000000000000100001100110111; // lui x6, 16384 ok
     inst_mem[4] <= 32'b00000000101001100000000110000111; // lwi x3, x6, x10 ok
-    inst_mem[5] <= 32'b00000000010000101000011000100111; // ss x12, x5, 4 ok
-    //inst_mem[3] <= 32'b11111110000100001000110011100011; // beq x1, x1, -8  ok
-    //inst_mem[4] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
-    inst_mem[6] <= 32'b11111111100111111111000001101111; //jump -8 ok
-    inst_mem[7] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
-    inst_mem[8] <= 32'h00500113; // addi x2, x0, 5  ok
-    inst_mem[9] <= 32'b00000000110001001000000001010100; // swap x9, x12
-    inst_mem[10] <= 32'h00210233; // add  x4, x2, x2  ok
-  
-    //inst_mem[1] <= 32'h00202223; // sw x2, 8(x0) ok
-    //inst_mem[1] <= 32'h0050a423; // sw x5, 8(x1) ok
-    //inst_mem[2] <= 32'h0000a003; // lw x1, x0(0) ok
-    //inst_mem[1] <= 32'hfff00113; // addi x2,x0,-1 ok
-    //inst_mem[2] <= 32'h00318133; // add x2, x3, x3 ok
-    //inst_mem[3] <= 32'h40328133; // sub x2, x5, x3 ok
+    inst_mem[5] <= 32'b00000000110001001000000001010100; // swap x9, x12 ok
+    inst_mem[6] <= 32'b00000000010000101000011000100111; // ss x12, x5, 4 ok
+    //inst_mem[7] <= 32'b11111110000100000100110011100011; // blt x0, x1, -8
+    //inst_mem[7] <= 32'b11111110000000001101110011100011; // bge x1, x0, -8 ok
+    inst_mem[7] <= 32'b11111111100111111111000001101111; //jump -8 ok
   end
   
 endmodule
@@ -86,26 +76,26 @@ module ControlUnit (input [6:0] opcode, input [31:0] inst, output reg alusrc, me
       7'b0110011: begin // R type == 51
         regwrite <= 1;
         aluop    <= 2;
-			end
-		  7'b1100011: begin // beq, blt == 99
+	  end
+	  7'b1100011: begin // beq, blt, bge == 99
         branch   <= 1;
         aluop    <= 1;
         ImmGen   <= {{19{inst[31]}},inst[31],inst[7],inst[30:25],inst[11:8],1'b0};
-			end
-			7'b0010011: begin // addi, slli == 19
+	  end
+	  7'b0010011: begin // addi, slli, ori == 19
         alusrc   <= 1;
         regwrite <= 1;
         aluop    <= 2;
         ImmGen   <= {{20{inst[31]}},inst[31:20]};
       end
-			7'b0000011: begin // lw == 3
+	  7'b0000011: begin // lw == 3
         alusrc   <= 1;
         memtoreg <= 1;
         regwrite <= 1;
         memread  <= 1;
         ImmGen   <= {{20{inst[31]}},inst[31:20]};
       end
-			7'b0100011: begin // sw == 35
+	  7'b0100011: begin // sw == 35
         alusrc   <= 1;
         memwrite <= 1;
         ImmGen   <= {{20{inst[31]}},inst[31:25],inst[11:7]};
@@ -193,7 +183,7 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
 
   always @(funct) begin
     case (jump)
-      1: branchop <= 3'd3; //JUMP
+      1: branchop <= 3'd3; // JUMP
       default: begin
         case (funct3)
           0: branchop <= 3'd0; // BEQ
@@ -216,7 +206,6 @@ module alucontrol (input [1:0] aluop, input [9:0] funct, output reg [3:0] alucon
           1: alucontrol <= 4'd4; //SLL
           2: alucontrol <= 4'd7; // SLT
           6: alucontrol <= 4'd1; // OR
-          //39: alucontrol <= 4'd12; // NOR
           7: alucontrol <= 4'd0; // AND
           default: alucontrol <= 4'd15; // Nop
         endcase
@@ -245,8 +234,6 @@ module ALU (input [3:0] alucontrol, input [2:0] branchop, input [31:0] A, B, out
         3: aluout <= B;   // B passa direto
         4: aluout <= A << B; // SLL
         6: aluout <= A - B; // SUB
-        //7: aluout <= A < B ? 32'd1:32'd0; //SLT
-        //12: aluout <= ~(A | B); // NOR
       default: aluout <= 0; //default 0, Nada acontece;
     endcase
   end
